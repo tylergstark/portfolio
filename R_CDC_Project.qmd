@@ -1,141 +1,8 @@
----
-title: 'DTSC 650: Data Analytics In R'
-subtitle: 'CodeGrade Final Project Part 2'
-output: html_notebook
-editor_options:
-  chunk_output_type: inline
----
-
-## Student Info
-
-```         
-Name: Tyler Stark
-Term: Summer 2
-Date: 08/04/2024
-```
-
-------------------------------------------------------------------------
-
-## General Instructions
-
-------------------------------------------------------------------------
-
-### Academic Integrity
-
-We expect all work conducted at Eastern University to reflect honest and ethical behavior. The primary rule for ensuring academic integrity is that all submitted work must be original and produced by the individual student.
-
-To uphold academic integrity, it is not permitted to view another student's work prior to submitting your own, nor should you provide your work to someone who has not yet submitted their work. Collaborating with other students is only allowed when seeking clarification on a topic or assignment instructions. 
-
-See the syllabus for more information.
-
-### Name of File
-
-Name your assignment file **`BRFSS_Part2`**. This is a quarto "markdown" file, which has the extension ".qmd".
-
-------------------------------------------------------------------------
-
-### Instructions
-
-For the final section, you will choose four variables to explore. These four variables must be *different* than the three analyzed in Q1-10. Select one of the four variables you chose as the response variable and the other three as predictors. Be sure to read through all of the instructions for Q11-Q15 before choosing your 4 variables.
-
-Feel free to create multiple variables for Q12, Q13, and Q14, e.g. Q12a, Q12b, etc. Please make it clear, though, the distinction between each question/problem with comments, spacing, and new code chunks. If you use Q12a, b, etc., be sure to print the results by doing Q12a or print(Q12a). It is allowable to use `print()` on this part. Your answers must be clearly identifiable.
-
-Take time to tidy your code once you are finished. The easier it is for us to understand, the more credit you could receive.
-
-------------------------------------------------------------------------
-
-### Allowable packages
-
-The only allowable packages are `tidyverse`, `caret`, `Hmisc`, `lsr`, `olsrr`, `psych`, `lm.beta`.
-
--   If the allowable packages are not installed on your local computer, you'll need to do a one-time installation *from the Console Window in RStudio* for each package like this:
-
-    **`install.packages('<package name>')`**
-
-    *Do not attempt to install packages in code that you submit to CodeGrade.*
-
--   Note: installing the entire tidyverse with `install.packages('tidyverse')` from the Console Window will save you from having to install any of the tidyverse's individual packages in the future.
-
--   In your code, load the package's library like this: **`library(<library name>)`**
-
-------------------------------------------------------------------------
-
-### Do / Do not
-
--   Do use tidyverse functions (e.g., dplyr verbs) for all of the questions where possible.
-
--   Do use The Pipe, either `%>%` or `|>`.
-
--   Do use plenty of comments throughout your code chunks so that the grader can follow your line of thinking.
-
--   Do use the "Q Discussion:" sections provided to explain your thinking and to answer the questions.
-
--   Do not rearrange data frame outputs unless specified by the question instructions.
-
--   Do not create multiple copies of the BRFSS dataset in your script. 
-
--   Do have integrity and submit your own work, not the work of a classmate, an online resource, or someone else.
-
--   Do not edit the CSV file in Excel, Numbers, Sheets, etc.
-
-
-------------------------------------------------------------------------
-
-### Submission
-
-You only have ONE ATTEMPT to submit Part 2 to the ACTUAL submission link! On all the other assignments, you got multiple attempts; but not on this assignment.
-
-Ensure you are ready and confident in your work before submitting.
-
-------------------------------------------------------------------------
 
 ### Data Set
 
 -   These data come from the [Centers for Disease Control](www.cdc.gov)
 
--   To answer these questions you will need to use the codebook on Brightspace, called `BRFSS_2021 Codebook`. For part 2 of the project, please note that not all of the variables listed in the codebook are included in the .csv file to be downloaded from Brightspace.
-
--   Download the `brfss2021.csv` file from Brightspace and place it in the same folder/directory as your script file. Then in RStudio, set your Working Directory to your Source File location: in the menus choose Session \| Set Working Directory \| To Source File Location. You most likely will see some warnings after it loads due to the fact that `read_csv()` will try to guess the column type but because there are so many rows it won't read enough of them to accurately make a guess.
-
--   You must use the `read_csv()` function when loading the .csv file. Do not use read.csv().
-
--   Do not rename the .csv file that you download from Brightspace.
-
--   Do not edit the .csv file.
-
-------------------------------------------------------------------------
-
-### Pipe Notation
-
-You may use the `tidyverse` pipe **`%>%`** or the new base R pipe **`|>`**. For a comparison, see [here](https://www.tidyverse.org/blog/2023/04/base-vs-magrittr-pipe/).
-
-You are expected to use pipe notation in all of the CodeGrade assignments. Although there are alternate ways to filter, subset, and summarize data sets, using the pipe creates more readable code and is an important skill to develop.
-
-------------------------------------------------------------------------
-
-### Comments vs. Discussion
-
-You should include both comments within your code chunk as well a discussion after each coded answer. Comments explain your code and your thought process; the discussion uses your code to answer the questions we've asked. We have provided "Q Discussion" sections for each question. Feel free to add more lines in the discussion section.
-
-You can also use markdown headers to organize your discussion and the outline. For more info on markdown, see [here](https://rmarkdown.rstudio.com/authoring_basics.html)
-
-------------------------------------------------------------------------
-
-### Rounding requirement
-
-Unlike Part 1, there is no rounding requirement. Use your best judgment.
-
-------------------------------------------------------------------------
-
-### Dataframe vs. Tibble
-
-Unlike Part 1, there is no dataframe requirement.
-
-------------------------------------------------------------------------
-
-## Questions and Coded Solutions
-
-------------------------------------------------------------------------
 
 ### Preliminaries
 
@@ -307,7 +174,7 @@ print(dfIQR)
 
 ### Q12 Discussion:
 
-I really struggled to pick a method for this question. Ultimately, I am choosing to use the 1.5 IQR method to remove the outliers for this dataset. The weight variable is the only variable with outliers. The rest of the data is categorical and cleaned. After running both the 1.5 IQR and 3SD removals on the dataset, you can see the summary statements that I have included. What I noticed is that the 1.5 IQR method removed quite a few more variables compared to the 3SD method, however, the summary variables are almost identical apart from the Max (300 for 1.5 IQR and 400 for 3SD). What I like about the 1.5 IQR method is that it very closely resembles the summary of the original dataset, apart from the Max. To me, that shows that this method will still reflect the original dataset well. The 3SD summary seems further away from the original data set by comparison, so I have opted for the 1.5 IQR method. I have renamed the datatset as 'dfIQR' and will use this method for the remainder of the project. I prefer this so I can go back and run tests on the original 'df' if I need to.
+I am choosing to use the 1.5 IQR method to remove the outliers for this dataset. The weight variable is the only variable with outliers. The rest of the data is categorical and cleaned. After running both the 1.5 IQR and 3SD removals on the dataset, you can see the summary statements that I have included. What I noticed is that the 1.5 IQR method removed quite a few more variables compared to the 3SD method, however, the summary variables are almost identical apart from the Max (300 for 1.5 IQR and 400 for 3SD). What I like about the 1.5 IQR method is that it very closely resembles the summary of the original dataset, apart from the Max. To me, that shows that this method will still reflect the original dataset well. The 3SD summary seems further away from the original data set by comparison, so I have opted for the 1.5 IQR method. I have renamed the datatset as 'dfIQR' and will use this method for the remainder of the project. I prefer this so I can go back and run tests on the original 'df' if I need to.
 
 ### Q13
 
@@ -585,20 +452,3 @@ I am concerned about the existence of multicollinearity between the indepedent v
 
 Therefore, I am comfortable saying that the 'modALL' model is the best model, and I would feel comfortable using it to predict responses from a new dataset.
 
-------------------------------------------------------------------------
-
-# Before submitting to Code Grade:
-
-1)  Clear objects from your environment. Click the broom in the Environment pane in the top right. This will erase any variables (like Q11, Q12) that you've stored.
-
-2)  Rerun all your code. You can click the "Run" option above in this script pane (top right of notebook), then select "Run all". You should have all the variables stored again in the environment pane, and you should see no red error messages in the console below.
-
-3)  **Important**: You only have ONE ATTEMPT to submit Part 2 to the ACTUAL submission link! Ensure you are ready and confident in your work before submitting.
-
-4)  Reread all the directions and questions and make sure you addressed each part carefully, clearly, and thoughtfully.
-
-------------------------------------------------------------------------
-
-This material is for enrolled students' academic use only and protected under U.S. Copyright Laws. This content must not be shared outside the confines of this course, in line with Eastern University's academic integrity policies. Unauthorized reproduction, distribution, or transmission of this material, including but not limited to posting on third-party platforms like GitHub, is strictly prohibited and may lead to disciplinary action. You may not alter or remove any copyright or other notice from copies of any content taken from BrightSpace or Eastern University's website.
-
-© Copyright Notice 2024, Eastern University - All Rights Reserved
