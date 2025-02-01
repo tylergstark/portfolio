@@ -3,13 +3,13 @@ Data Science Projects
 
 I have included in my portfolio a few academic projects showcasing my skills in Python, R, SQL and Tableau:
 
-Machine Learning Final Project & Executive Summary:
+SciKit Learn Machine Learning School Success Prediction Project:
 -   A model in Python using Sci-Kit Learn to predict student success based on factors provided in an annual student survey
 
-Mushroom Machine Learning Final Project:
+Python Jupyter Notebook Poisonous Mushrooms Machine Learning Project:
 -   A model in Python using Sci-Kit Learn, TensorFlow/Keras to predict whether a mushroom will be poisonous based on provided indicators
 
-R CDC Project
+R CDC BRFSS Analysis Project:
 -   A statistical analysis of an annual CDC survey to determine high-risk indicators of arthritis (better viewing if ran through R Studio)
 
 SQL Warby Parker Project
