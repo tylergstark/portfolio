@@ -1,0 +1,441 @@
+---
+title: 'Healthcare Data Analytics In R'
+subtitle: 'CDC Behavioral Risk Factor Surveillance System Telephone Survey'
+---
+
+##Creator Info:
+
+```         
+Name: Tyler Stark
+Email: tylergstark@outlook.com
+Date: 08/04/2024
+```
+
+------------------------------------------------------------------------
+
+### Preliminaries
+
+```{r}
+### It's always a good idea when working in RStudio to start with a clean environment. 
+
+rm(list = ls())
+
+### Load the libraries you need
+
+library(tidyverse) 
+library(lsr)
+library(lm.beta)
+library(psych)
+
+### Load the Data
+brf <- read_csv("brfss2021.csv", show_col_types = FALSE)
+
+```
+
+------------------------------------------------------------------------
+
+## Questions
+
+------------------------------------------------------------------------
+
+### Part 1
+
+Address the values of each of the variables. For instance, is "none" equal to a value other than 0? Are there extra decimals implied? Are there other values that should be excluded based on the responses they represent? Which variable will you seek to predict from the other variables? Update the dataset to account for these values for the remainder of the questions.
+
+```{r}
+
+#selecting the variables that I would like to examine
+brf_part2 <- brf |> 
+  select(WEIGHT2,`_AGE_G`,HAVARTH5,TOLDHI3)
+
+#_AGE-G - 6 age groupings for our data
+#levels: 1 as 18-24, 2 as 25-34, 3 as 35-44, 4 as 45-54, 5 as 55-64, 6 as 65+
+# not modifying this value at all
+
+
+#begin by filtering WEIGHT2 to desired values
+#WEIGHT 2 Levels
+#values 50 - 0776 lbs hold 92.94% of the responses
+#7777 "don't know/not sure"
+#9023-9352 "weight (kilograms)"
+#9999 refused
+#the remainder were not asked, or missing
+#I chose to filter to the first value group
+
+df <- brf_part2 |> 
+  filter(WEIGHT2 < 1000)
+
+#HAVARTH5 - Has a doctor, nurse or other health professional ever told you that you had some form of arthritis, rheumatoid arthritis, gout, lupus, or fibromyalgia?
+
+#HAVARTH5 levels: 1 = 'Yes', 2 = 'No', 7 = 'don't know/not sure', 9 = 'refused', rest are blank
+
+#TOLDHI3 - Have you ever been told by a doctor, nurse or other health professional that your cholesterol is high?
+
+#TOLDHI3 levels: 1 = 'Yes', 2 = 'No', 7 = 'don't know/not sure', 9 = 'refused', rest are blank
+
+#removing 7 and 9 responses from HAVARTH5 and TOLDHI5
+
+df <- df |> 
+  filter(HAVARTH5 != 7 & HAVARTH5 != 9)
+
+df <- df |> 
+  filter(TOLDHI3 != 7 & TOLDHI3 != 9)
+
+#quick check of the basic stats
+summary(df)
+
+#double checking for na values
+sum(is.na(df))
+
+#creating a bin for each variable, making binary values consistent (0 = no, 1 = yes)
+#I will make a Weight Bin at the regression stage
+df <- df |> 
+  mutate(binARTH = ifelse(HAVARTH5 == 2 , 0, 1),
+         binCHOL = ifelse(TOLDHI3 == 2 , 0, 1))
+
+df <- df |> 
+  select(WEIGHT2, binARTH,binCHOL, `_AGE_G`)
+
+#renaming the columns to something more intuitive
+df <- df |> 
+  rename(weight = WEIGHT2,
+         arthritis = binARTH,
+         cholesterol = binCHOL,
+         age = `_AGE_G`)
+
+print(df)
+#see discussion below for further insight
+
+```
+
+### Part 1 Discussion:
+
+I spent a few years working at the YMCA as a Personal Trainer and Group Exercise Instructor, and I spent alot of time with clients who struggled with Arthritis. I have heard many theories - founded and unfounded - as to the causes of Arthritis, and I have always been interested in the statistical backing behind these statements. Two contributors that I often heard from clients was either (a) their age, or (b) their weight. That is the main reason I have included these two variables in my study. As for cholesterol, recent studies have suggested that high cholesterol is positively correlated with Arthritis risk. For that reason, I was eager to include this variable in my study. Albeit, all of these variables are self reported, and there is room for error there. However, I can't foresee many reasons for a participant to lie about their weight and age on an anonymous study. Furthermore, the TOLDHI3 and HAVARTH5 variables are concerned with whether or not a doctor has informed the participant of their cholesterol/arthritis status or risk. There seems to be less chance of error here, compared to someone reporting whether or not they think they have the risk of either. So I can assume we have some good data here to give us a bird's eye view of the correlation between these variables, prompting further studies down the road. As for the WEIGHT2 variable, I chose to only include the "weight in lbs" variable, and to not spend time including the "kg" variables. The percentage of kg variables seemed miniscule enough to still get a decent grasp of the data, so I didn't want to fool with it. The HAVARTH5 and TOLDHI3 variables only had 4 categories, and removing the 7 and 9 categories brought the data to a binomial "yes" or "no". The \_AGE_G variable didn't need to be cleaned at all (which was a relief). However, you will notice that a larger percentage of participants are older, which may skew the data. It makes sense to me that an older population would spend more time responding to a phone survey. My ultimate goal is to determine which, if any, of these variables are correlated with the risk of arthritis in these participants.
+
+### Part 2
+
+Remove any outliers for each applicable variable. Update the dataset as you go. Within your code chunk, provide comments explaining what your code is doing.
+
+```{r}
+
+#OPTION 1
+#removing outliers with 1.5 IQR rule (max goes from 790 lbs to 300 lbs)
+
+summary(df$weight)
+
+# Q3 + 1.5(IQR)
+upper_fence <- quantile(df$weight, 0.75) + (1.5 * IQR(df$weight))
+
+# Q1 - 1.5(IQR)
+lower_fence <- quantile(df$weight, 0.25) - (1.5 * IQR(df$weight))
+
+dfIQR <- df |> 
+  filter(
+    weight >= lower_fence,
+    weight <= upper_fence
+  )
+
+#summarizing my findings
+summary(dfIQR$weight)
+
+#viewing the distribution of the data
+ggplot(dfIQR,
+       aes(x = weight)) +
+  geom_boxplot()
+
+#OPTION 2
+#removing outliers with 3SD rule (MAX goes to 400 lbs, but more outliers in the boxplot)
+
+lower_bound <- quantile(df$weight, 0.0015, na.rm = TRUE)
+
+# Any value more than 3 SDs to the right
+upper_bound <- quantile(df$weight, 0.9985, na.rm = TRUE)
+
+# Remove values more than 3 SDs away (on either side)
+df3SD <- df |> 
+  filter(
+    weight >= lower_bound,
+    weight <= upper_bound
+  )
+
+#summarizing my findings
+summary(df3SD$weight)
+
+#viewing the distribution of the data
+ggplot(df3SD,
+       aes(x = weight)) +
+  geom_boxplot()
+ 
+#read insights below
+
+print(dfIQR)
+```
+
+### Part 2 Discussion:
+
+I am choosing to use the 1.5 IQR method to remove the outliers for this dataset. The weight variable is the only variable with outliers. The rest of the data is categorical and cleaned. After running both the 1.5 IQR and 3SD removals on the dataset, you can see the summary statements that I have included. What I noticed is that the 1.5 IQR method removed quite a few more variables compared to the 3SD method, however, the summary variables are almost identical apart from the Max (300 for 1.5 IQR and 400 for 3SD). What I like about the 1.5 IQR method is that it very closely resembles the summary of the original dataset, apart from the Max. To me, that shows that this method will still reflect the original dataset well. The 3SD summary seems further away from the original data set by comparison, so I have opted for the 1.5 IQR method. I have renamed the datatset as 'dfIQR' and will use this method for the remainder of the project. I prefer this so I can go back and run tests on the original 'df' if I need to.
+
+### Part 3
+
+Complete exploratory analyses (for each variable) doing appropriate visualizations with ggplot2. Include visualizations that incorporate a combination of your variables within one plot.
+
+```{r}
+
+# casting these variables as factors so we can run prettier plots
+
+dfIQR$arthritis <- as.factor(dfIQR$arthritis)
+dfIQR$age <- as.factor(dfIQR$age)
+dfIQR$cholesterol <- as.factor(dfIQR$cholesterol)
+
+#examining the difference in weight between Arthritis groups. 0 = 'No', 1 = 'Yes'
+#I want to know if the average weight is higher for those with Arthritis
+
+ggplot(dfIQR,
+       aes(x = arthritis, y = weight, group = arthritis)) +
+  geom_boxplot()
+
+#examining the difference in weight between Cholesterol groups
+#I also want to know if the average weight is higher for those with Cholesterol
+ggplot(dfIQR,
+       aes(x = cholesterol, y = weight, group = cholesterol)) +
+  geom_boxplot()
+
+#examining weight across age groups
+#this is mostly for fun, but you can see that weight follows a bell curve as age progresses
+ggplot(dfIQR,
+       aes(x = age, y = weight, group = age)) +
+  geom_boxplot()
+
+
+#the following density plots reflect the correlation of arthritis and cholesterol with age
+
+#density plot of Arthritis variables and weight
+ggplot(dfIQR,
+       aes(x = weight, color = arthritis, fill = arthritis)) + 
+  geom_density(alpha = 0.5)
+
+#density plot of Cholesterol variables and weight
+ggplot(dfIQR,
+       aes(x = weight, color = cholesterol, fill = cholesterol)) + 
+  geom_density(alpha = 0.5)
+
+
+#bar plot distribution of arthritis and age
+#I want to know if the proportion of "yes" changes with the increase in age
+
+ggplot(dfIQR,
+       aes(x = age, fill = arthritis)) +
+  geom_bar(position = "dodge")
+
+#bar plot distribution of cholesterol and arthritis
+#I want to know how often someone has high cholesterol AND arthritis? are they related?
+ggplot(dfIQR,
+       aes(x = cholesterol, fill = arthritis)) +
+  geom_bar(position = "dodge")
+
+
+#the following histograms are meant to be viewed together
+#the first is just a general overview of the distribution of weight across the participants
+#fairly normal distribution after the removal of outliers
+
+ggplot(dfIQR,
+       aes(x = weight)) + 
+  geom_histogram(binwidth = 10)
+
+#I want to see the change in proportion for arthritis as weight increases
+ggplot(dfIQR,
+       aes(x = weight, fill = arthritis)) + 
+  geom_histogram(binwidth = 10)
+
+#I want to see the change in proportion for cholesterol as weight increases
+ggplot(dfIQR,
+       aes(x = weight, fill = cholesterol)) + 
+  geom_histogram(binwidth = 10)
+
+```
+
+### Part 3 Discussion:
+
+I chose to use Box, Bar, Density and Histogram plots for my analyses of these variables.
+
+Beginning with the Boxplots, I mainly wanted to know the average distribution of weight across the groupings for cholesterol and arthritis. What I saw is that those who identified as having high cholesterol or arthritis had a higher weight on average. Albeit, the average is not much higher than the "no" group, but the difference is still there.
+
+For the Density plots, I wanted to picture how the ratio of "yes" to "no" changes for cholesterol and and arthritis as weight progresses. You can see for both that, as weight approaches roughly 200 lbs, there is a flip in the proportions of "yes" respondants. This tells me there may be a correlation between weight and arthritis/cholesterol.
+
+The Bar plots are my favorite visualizations of this study because you can see the drastic shift in proportion so well. The first bar plot depicts the proportion of Arthritis respondants for each age variable. As age progresses, the "yes" pool grows larger, until you get to the oldest age bracket, where there are more "yes" respondants than "no". This tells me that age and arthritis may be positively correlated (however, that does not mean they are causal). The second bar plot depicts the proportion of cholesterol respondants who have arthritis. What is striking to me is that the "yes" pool is almost 50/50 for those who do and don't have arthritis. Compare that to the low cholesterol pool, which is about 33/67. Cholesterol and arthritis may be correlated.
+
+Lastly, I chose the histograms as the cherry on top. They basically cover the same information that the density plots give us, but from a different angle. Once again, the ratio of those who do/don't have arthritis/high cholesterol begins to even out (50/50) as weight progresses.
+
+### Part 4
+
+Run all of the appropriate basic descriptive statistics for each of your variables. What do these statistics reveal?
+
+```{r}
+
+dfIQR$arthritis <- as.numeric(dfIQR$arthritis)
+dfIQR$age <- as.numeric(dfIQR$age)
+dfIQR$cholesterol <- as.numeric(dfIQR$cholesterol)
+
+###summary statistics for weight###
+#measures of Central Tendency
+
+mean(dfIQR$weight) #181
+median(dfIQR$weight) #180
+modeOf(dfIQR$weight) #200 lbs
+maxFreq(dfIQR$weight) #18468
+
+#measures of Variability
+aad(dfIQR$weight) #33.8
+var(dfIQR$weight) #1774.1
+sd(dfIQR$weight) #42.1
+mad(dfIQR$weight) #44.5
+
+skew(dfIQR$weight) #0.47 positive skew, tail on right
+
+summary(dfIQR$weight)
+
+###summary statistics for age###
+#measures of Central Tendency
+
+mean(dfIQR$age) #4.6 
+median(dfIQR$age) #5 
+modeOf(dfIQR$age) #6
+maxFreq(dfIQR$age) #130005
+
+#measures of Variability
+aad(dfIQR$age) #1.27
+var(dfIQR$age) #2.19
+sd(dfIQR$age) #1.48
+mad(dfIQR$age) #1.48
+
+skew(dfIQR$age) #-0.75, negative skew, tail on left
+
+summary(dfIQR$age)
+
+###summary statistics for arthritis & cholesterol###
+
+dfIQR |> 
+  group_by(arthritis) |> 
+  summarise(n = n(),
+            prop = n/nrow(dfIQR)) #35% of participants have arthritis
+
+dfIQR |> 
+  group_by(cholesterol) |> 
+  summarise(n = n(),
+            prop = n/nrow(dfIQR)) #40% of participants have high cholesterol
+
+x = table(dfIQR$arthritis, dfIQR$cholesterol)
+prop.table(x) #18% of participants have arthritis and high cholesterol
+
+dfIQR |> 
+  group_by(age, cholesterol) |> 
+  summarise(n = n(),
+            prop = n/nrow(dfIQR)) |> 
+  arrange(desc(prop)) #people 65+ with high cholesterol make up 20% of participants
+
+dfIQR |> 
+  group_by(age, arthritis) |> 
+  summarise(n = n(),
+            prop = n/nrow(dfIQR)) |> 
+  arrange(desc(prop)) #people 65+ with arthritis make up 20% of participants, as well
+
+cor(dfIQR)
+
+cor.test(dfIQR$arthritis, dfIQR$cholesterol)
+cor.test(dfIQR$arthritis, dfIQR$age)
+cor.test(dfIQR$arthritis, dfIQR$weight)
+#all have high t values and low p values, but highest correlation seems to be arthritis and age
+
+#highest correlation between
+#(1) Age & Arthritis
+#(2) Age & Cholesterol
+#(3) Arthritis & Cholesterol
+
+```
+
+### Part 4 Discussion:
+
+Most of what I observed is in the comments, but I will summarize.
+
+Beginning with weight and age, the first thing I noticed is the presence of skew in both variables, especially with age. Age has a high negative (left) skew, with most of the population residing in the higher age brackets. Weight has a smaller, positive (right) skew. The skew for age will most likely impact the data more so than the weight skew, especially if there is correlation between age and the other variables. Despite the graph of the weight variable looking normally distributed, the mode of the variable is roughly 20 lbs higher than the mean. However, I don't think this will impact much.
+
+As for our binary variables - arthritis and cholesterol - the findings seemed more interesting. 35% of participants have arthritis, while 40% have high cholesterol. This proves my theory that the age skew may impact the numbers for these variables if there is, in fact, a correlation. Those are high percentages. From a quick google search, roughly 1 in 4 adults have arthritis, while roughly 10% of adults have high cholesterol. So, our study group may not accurately reflect the population as a whole. This, once again, could be because of the method of the survey.
+
+Another thing to note is the overlap of participants with cholesterol and arthritis. Almost 1/5 of the participants have arthritis AND high cholesterol. At the same time, participants 65+ with arthritis make up 20% of the survey, while people 65+ with high cholesterol ALSO make up 20% of the survey. There must be a considerable amount of overlap there.
+
+I finished with some basic correlation tests. What I found is that age and arthritis have the highest correlation, while each variable seems to be correlated with arthritis significantly.
+
+That being said, this data may be too skewed to give us the most accurate results, since it appears to reflect more upon the older population groups.
+
+### Part 5
+
+Finally, run at least 2 different, appropriate regressions predicting the variables indicated in Part 1. These regressions should use different predictor(s). Organize and explain your code within the code chunk using comments. Identify the best model.
+
+```{r}
+
+#creating binomial bins for age and weight to make my regressions a bit simpler
+#I chose the 3 quantile and above as the "overweight" range
+#I chose 55 and older as the "old age" range (this doesn't reflect my beliefs on what "old age" means)
+
+dfIQR_bins <- dfIQR |> 
+  mutate(weight = ifelse(weight > 209, 1, 0),
+         age = ifelse(age >= 5, 1, 0))
+
+#turned each variable back into factors to run my GLMs
+
+dfIQR_bins$weight <- as.factor(dfIQR_bins$weight)         
+dfIQR_bins$arthritis <- as.factor(dfIQR_bins$arthritis)
+dfIQR_bins$age <- as.factor(dfIQR_bins$age)
+dfIQR_bins$cholesterol <- as.factor(dfIQR_bins$cholesterol)
+
+dfIQR_bins <- dfIQR_bins |> 
+  select(arthritis, cholesterol, age, weight)
+
+#creating a series of GLMs for each combination, placing them in order of increasing AIC
+
+#all variables predicting odds of having arthritis
+modAll <- glm(arthritis ~ age + cholesterol + weight, binomial(), dfIQR_bins)
+
+summary(modAll)
+
+#age and cholesterol predicting odds of having arthritis
+modAGE_CHOL <- glm(arthritis ~ age + cholesterol, binomial(), dfIQR_bins)
+
+summary(modAGE_CHOL)
+
+#age and weight predicting odds of having arthritis
+modAGE_WEIGHT <- glm(arthritis ~ age + weight, binomial(), dfIQR_bins)
+
+summary(modAGE_WEIGHT)
+
+#age predicting odds of having arthritis
+modAGE <- glm(arthritis ~ age, binomial(), dfIQR_bins)
+
+summary(modAGE)
+
+#cholesterol and weight predicting odds of having arthritis
+modCHOL_WEIGHT <- glm(arthritis ~ cholesterol + weight, binomial(), dfIQR_bins)
+
+summary(modCHOL_WEIGHT)
+
+#cholesterol predicting odds of having arthritis
+modCHOL <- glm(arthritis ~ cholesterol, binomial(), dfIQR_bins)
+
+summary(modCHOL)
+
+#weight predicting odds of having arthritis
+modWEIGHT <- glm(arthritis ~ weight, binomial(), dfIQR_bins)
+
+summary(modWEIGHT)
+
+```
+
+### Part 5 Discussion:
+
+This was the most enjoyable part of the project to me, because it is the fruit of all the hard work. By this point, I could very well guess what the regressions would tell me, but it was nice to see them confirmed. To summarize, it appears that the best model fit for predicting the odds of arthritis in a participant is the model that uses each variable as a predictor. This AIC was lower than all of the models, and that is the factor that I am using to determine my decision for model fit. I decided to create binomial bins for weight and age, but I believe that these bins were well founded in the stats. There is margin for error, but I would probably get a similar answer if I chose to not create the bins.
+
+I am concerned about the existence of multicollinearity between the independent variables. From the visuals, it is clear that correlation exists between all three of them. However, it makes sense to me that these variables can still remain independent of one another when predicting the presence of arthritis in a participant. Old age could be correlated, even causing, arhtritis. So can high cholesterol. Yet, both of those together could increase the risk even more so.
+
+Therefore, I am comfortable saying that the 'modALL' model is the best model, and I would feel comfortable using it to predict responses from a new dataset.
+
+------------------------------------------------------------------------
